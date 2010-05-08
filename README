@@ -1,4 +1,10 @@
+-------------------------------------------------------------------------------
+
 Sensi - set of infrastructure utilities which run on NodeJS
+
+Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com)
+
+-------------------------------------------------------------------------------
 
 Sensi is a set of infrastructure utilities that you can use internally on your
 projects. All utilities are written in NodeJS and are all fast event driven
@@ -12,3 +18,19 @@ I wanted to release this code as AGPv3 but I want it to be used in
 organisations backends which don't necessarily want to release the code for
 their own applications (not that they'd have to anyway) so instead have chosen
 the GPLv3 or later license for all programs.
+
+-------------------------------------------------------------------------------
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see http://www.gnu.org/licenses/.
+
+-------------------------------------------------------------------------------
