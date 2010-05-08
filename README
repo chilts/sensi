@@ -1,8 +1,7 @@
 -------------------------------------------------------------------------------
 
-Sensi - set of infrastructure utilities which run on NodeJS
-
-Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com)
+Sensi - set of 'Infrastructure as a Service' utilities which run on NodeJS.
+Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
 
 -------------------------------------------------------------------------------
 
@@ -32,5 +31,13 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see http://www.gnu.org/licenses/.
+
+-------------------------------------------------------------------------------
+
+AppsAttic, hereby disclaims all copyright interest in the program suite "Sensi"
+(which is a set of 'Infrastructure as a Service' utilities) written by Andrew
+Chilton.
+
+Signed: Andrew Chilton (Director), 9 May 2010
 
 -------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 #!//usr/local/bin/node
 // ----------------------------------------------------------------------------
 //
-// Sensi - s set of Infrastructure As A Service utilities which run on NodeJS.
-// Copyright © 2010 by Andrew Chilton (chilts@appsattic.com)
+// Sensi - set of 'Infrastructure as a Service' utilities which run on NodeJS.
+// Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
 //
 // ----------------------------------------------------------------------------
 //
@@ -11,6 +11,9 @@
 // information such as the time the message was added and the number of
 // attempted deliveries. It has a default queue but you can use as many queues
 // as you require which are automatically created.
+//
+// If you require a distributed and therefore redundant queue, please look at
+// sensi-dq.js.
 //
 // ----------------------------------------------------------------------------
 //

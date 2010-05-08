@@ -1,0 +1,27 @@
+-------------------------------------------------------------------------------
+
+Installing and running any of these programs is simple in comparison to the one
+and only step to install NodeJS.
+
+Firstly, head over to http://nodejs.org/#download
+
+Follow the instructions from http://nodejs.org/#build so that when you type
+'which node' and 'node --version', you get something like the following:
+
+ $ which node
+ /usr/local/bin/node
+ $ node --version
+ v0.1.93-27-g1a31713
+
+As you can see, I built mine from the Git repo hash 1a31713.
+
+-------------------------------------------------------------------------------
+
+Once NodeJS is installed and working, to run one of the sensi programs, just
+run the program much like any other (so long as it is in your path):
+
+ $ sensi-sq.js
+ Server running at http://127.0.0.1:8000/
+ ...etc...
+
+-------------------------------------------------------------------------------
