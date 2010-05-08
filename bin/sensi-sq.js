@@ -1,3 +1,4 @@
+#!//usr/local/bin/node
 // ----------------------------------------------------------------------------
 //
 // Sensi - s set of Infrastructure As A Service utilities which run on NodeJS.
