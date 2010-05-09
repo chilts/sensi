@@ -76,7 +76,8 @@ http.createServer(function (req, res) {
             queue[queuename] = [];
         }
 
-        queue[queuename].push({ 'text' : msg, 'inserted' : iso8601() });
+        queue[queuename].push({ 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
+        sys.puts('msg = ' + JSON.stringify(msg));
 
         return_result(res, 200, 0, 'Message Added', {});
     }
@@ -99,8 +100,9 @@ http.createServer(function (req, res) {
             return;
         }
 
-        // get the message
+        // get the message and increment the number of times it has been delivered
         var msg = queue[queuename].shift();
+        msg.delivered++;
 
         // generate a new token for this message and remember it
         var token = make_token();
@@ -130,7 +132,7 @@ http.createServer(function (req, res) {
         ack_list[queuename][token] = { 'msg' : msg, 'timeout' : timeout };
 
         // ToDo: replace this with return_result
-        return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted });
+        return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
     }
     else if ( parts.pathname == '/ack' ) {
         sys.puts('Got an /ack');
