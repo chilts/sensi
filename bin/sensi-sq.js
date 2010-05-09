@@ -35,16 +35,35 @@
 // ----------------------------------------------------------------------------
 
 // requires
-var sys = require('sys');
-var http = require('http');
-var url = require('url');
+var sys = require('sys')
+  , http = require('http')
+  , url = require('url')
+  , fs = require('fs');
 
 // global vars :)
 var queue = {};
 var ack_list = {};
+var cfg = {};
+
+// read the config file (if it exists)
+var cfg = JSON.parse(fs.readFileSync('./sensi-sq.json'));
+sys.puts('cfg=' + JSON.stringify(cfg));
+cfg['port'] = cfg['port'] || '8000';
 
 // make sure the default queue is always there
-queue['default'] = [];
+queue['default'] = { 'queue' : [], 'timeout' : 30 };
+
+// loop through any queues in the config file and set the timeouts
+for (queue_cfg in cfg['queues'] ) {
+    // if no timeout specified, set it to be 30 secs
+    queue[cfg['queues'][queue_cfg]['name']] = {
+        'queue' : [],
+        'timeout' : cfg['queues'][queue_cfg]['timeout'] || 30
+    };
+}
+
+// show what the queues now looks like
+sys.puts('queue   = ' + JSON.stringify(queue));
 
 http.createServer(function (req, res) {
     sys.puts('- START ------------------------------------------------------------------------');
@@ -52,8 +71,6 @@ http.createServer(function (req, res) {
     var parts = url.parse( req.url, true );
     if ( parts.query == null )
         parts.query = {};
-
-    // ToDo: check req.method is what we expect: PUT, POST, GET, DELETE
 
     sys.puts('method  = ' + req.method);
     sys.puts('path    = ' + parts.pathname);
@@ -83,9 +100,9 @@ http.createServer(function (req, res) {
     sys.puts('queue   = ' + JSON.stringify(queue));
     sys.puts('ack_list = ' + JSON.stringify(ack_list));
     sys.puts('- END --------------------------------------------------------------------------');
-}).listen(8000);
+}).listen(cfg['port']);
 
-sys.puts('Server running at http://127.0.0.1:8000/');
+sys.puts('Server running at http://127.0.0.1:' + cfg['port'] + '/');
 
 // ----------------------------------------------------------------------------
 // response functions
@@ -106,15 +123,15 @@ function add (req, parts, res) {
     }
 
     // if there is no queue of that name yet, make one
-    if ( typeof queue[queuename] == 'undefined' ) {
-        queue[queuename] = [];
+    if ( typeof queue[queuename]['queue'] == 'undefined' ) {
+        queue[queuename]['queue'] = [];
     }
 
     // 'id' is optional, but create one if we need to
     id = id || make_token();
 
     // add the message to the queue
-    queue[queuename].push({ 'id' : id, 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
+    queue[queuename]['queue'].push({ 'id' : id, 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
     sys.puts('msg = ' + JSON.stringify(msg));
 
     return_result(res, 200, 0, 'Message Added', {});
@@ -134,13 +151,13 @@ function get (req, parts, res) {
     }
 
     // if there are no messages on the queue, bail
-    if ( queue[queuename].length == 0 ) {
+    if ( queue[queuename]['queue'].length == 0 ) {
         return_error(res, 2, 'No messages found');
         return;
     }
 
     // get the message and increment the number of times it has been delivered
-    var msg = queue[queuename].shift();
+    var msg = queue[queuename]['queue'].shift();
     msg.delivered++;
 
     // generate a new token for this message and remember it
@@ -155,14 +172,14 @@ function get (req, parts, res) {
         sys.puts('Message (ack=' + token + ') timed out');
 
         // put this message back on the queue
-        queue[queuename].unshift(msg);
+        queue[queuename]['queue'].unshift(msg);
         delete ack_list[queuename][token];
 
         sys.puts('');
         sys.puts('queue   = ' + JSON.stringify(queue));
         sys.puts('ack_list = ' + JSON.stringify(ack_list));
         sys.puts('- END --------------------------------------------------------------------------');
-    }, 10000);
+    }, queue[queuename]['timeout'] * 1000);
 
     // now that we have everything, put it on the ack_list
     if ( typeof ack_list[queuename] == 'undefined' ) {
