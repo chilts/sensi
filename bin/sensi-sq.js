@@ -63,113 +63,15 @@ http.createServer(function (req, res) {
 
     switch ( parts.pathname ) {
     case '/add':
-        sys.puts('Got an /add');
-
-        var queuename = make_queuename(parts.query.queue);
-        var msg = parts.query.msg;
-        sys.puts('Message = ' + msg);
-        sys.puts('Queue   = ' + queuename);
-
-        // return error if the message is undefined (an empty msg is ok)
-        if ( typeof msg == 'undefined' ) {
-            return_error(res, 1, 'Message is undefined');
-            return;
-        }
-
-        if ( typeof queue[queuename] == 'undefined' ) {
-            queue[queuename] = [];
-        }
-
-        queue[queuename].push({ 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
-        sys.puts('msg = ' + JSON.stringify(msg));
-
-        return_result(res, 200, 0, 'Message Added', {});
+        add(req, parts, res);
         break;
 
     case '/get':
-        sys.puts('Got a /get');
-
-        sys.puts('Queue = ' + parts.query.queue);
-        var queuename = make_queuename(parts.query.queue);
-        sys.puts('Queue = ' + queuename);
-
-        // if there is no queue for this at all, bail
-        if ( typeof queue[queuename] == 'undefined' ) {
-            return_error(res, 1, 'No queue of that name found');
-            return;
-        }
-
-        // if there are no messages on the queue, bail
-        if ( queue[queuename].length == 0 ) {
-            return_error(res, 2, 'No messages found');
-            return;
-        }
-
-        // get the message and increment the number of times it has been delivered
-        var msg = queue[queuename].shift();
-        msg.delivered++;
-
-        // generate a new token for this message and remember it
-        var token = make_token();
-        sys.puts('token=' + token);
-
-        var timeout = setTimeout(function() {
-            sys.puts('- TIMEOUT ----------------------------------------------------------------------');
-            sys.puts('queue   = ' + JSON.stringify(queue));
-            sys.puts('ack_list = ' + JSON.stringify(ack_list));
-            sys.puts('');
-            sys.puts('Message (ack=' + token + ') timed out');
-
-            // put this message back on the queue
-            queue[queuename].unshift(msg);
-            delete ack_list[queuename][token];
-
-            sys.puts('');
-            sys.puts('queue   = ' + JSON.stringify(queue));
-            sys.puts('ack_list = ' + JSON.stringify(ack_list));
-            sys.puts('- END --------------------------------------------------------------------------');
-        }, 10000);
-
-        // now that we have everything, put it on the ack_list
-        if ( typeof ack_list[queuename] == 'undefined' ) {
-            ack_list[queuename] = {};
-        }
-        ack_list[queuename][token] = { 'msg' : msg, 'timeout' : timeout };
-
-        // ToDo: replace this with return_result
-        return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
+        get(req, parts, res);
         break;
 
     case '/ack':
-        sys.puts('Got an /ack');
-
-        var queuename = make_queuename(parts.query.queue);
-        var token = parts.query.token;
-
-        sys.puts('queuename = ' + queuename);
-        sys.puts('token     = ' + token);
-        sys.puts('ack_list  = ' + JSON.stringify(ack_list));
-
-        if ( typeof ack_list[queuename] == 'undefined' ) {
-            ack_list[queuename] = {};
-        }
-
-        // see if this token exists in the ack_list
-        if ( ack_list[queuename][token] == null ) {
-            // not there, so let's get out of here
-            res.writeHead(200, {'Content-Type': 'text/json'});
-            var result = { 'status' : { 'code' : 100, 'msg' : 'Token not known' } };
-            res.end(JSON.stringify( result ) + '\n' );
-            return;
-        }
-
-        // yes, it is in the ack_list, so just delete it
-        var timeout = ack_list[queuename][token].timeout;
-        clearTimeout(timeout);
-        delete ack_list[queuename][token];
-
-        // write result to client
-        return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue', {});
+        ack(req, parts, res);
         break;
 
     default:
@@ -184,6 +86,122 @@ http.createServer(function (req, res) {
 }).listen(8000);
 
 sys.puts('Server running at http://127.0.0.1:8000/');
+
+// ----------------------------------------------------------------------------
+// response functions
+
+function add (req, parts, res) {
+    sys.puts('Got an /add');
+
+    var queuename = make_queuename(parts.query.queue);
+    var msg = parts.query.msg;
+    sys.puts('Message = ' + msg);
+    sys.puts('Queue   = ' + queuename);
+
+    // return error if the message is undefined (an empty msg is ok)
+    if ( typeof msg == 'undefined' ) {
+        return_error(res, 1, 'Message is undefined');
+        return;
+    }
+
+    if ( typeof queue[queuename] == 'undefined' ) {
+        queue[queuename] = [];
+    }
+
+    queue[queuename].push({ 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
+    sys.puts('msg = ' + JSON.stringify(msg));
+
+    return_result(res, 200, 0, 'Message Added', {});
+}
+
+function get (req, parts, res) {
+    sys.puts('Got a /get');
+
+    sys.puts('Queue = ' + parts.query.queue);
+    var queuename = make_queuename(parts.query.queue);
+    sys.puts('Queue = ' + queuename);
+
+    // if there is no queue for this at all, bail
+    if ( typeof queue[queuename] == 'undefined' ) {
+        return_error(res, 1, 'No queue of that name found');
+        return;
+    }
+
+    // if there are no messages on the queue, bail
+    if ( queue[queuename].length == 0 ) {
+        return_error(res, 2, 'No messages found');
+        return;
+    }
+
+    // get the message and increment the number of times it has been delivered
+    var msg = queue[queuename].shift();
+    msg.delivered++;
+
+    // generate a new token for this message and remember it
+    var token = make_token();
+    sys.puts('token=' + token);
+
+    var timeout = setTimeout(function() {
+        sys.puts('- TIMEOUT ----------------------------------------------------------------------');
+        sys.puts('queue   = ' + JSON.stringify(queue));
+        sys.puts('ack_list = ' + JSON.stringify(ack_list));
+        sys.puts('');
+        sys.puts('Message (ack=' + token + ') timed out');
+
+        // put this message back on the queue
+        queue[queuename].unshift(msg);
+        delete ack_list[queuename][token];
+
+        sys.puts('');
+        sys.puts('queue   = ' + JSON.stringify(queue));
+        sys.puts('ack_list = ' + JSON.stringify(ack_list));
+        sys.puts('- END --------------------------------------------------------------------------');
+    }, 10000);
+
+    // now that we have everything, put it on the ack_list
+    if ( typeof ack_list[queuename] == 'undefined' ) {
+        ack_list[queuename] = {};
+    }
+    ack_list[queuename][token] = { 'msg' : msg, 'timeout' : timeout };
+
+    // ToDo: replace this with return_result
+    return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
+}
+
+function ack (req, parts, res) {
+    sys.puts('Got an /ack');
+
+    var queuename = make_queuename(parts.query.queue);
+    var token = parts.query.token;
+
+    sys.puts('queuename = ' + queuename);
+    sys.puts('token     = ' + token);
+    sys.puts('ack_list  = ' + JSON.stringify(ack_list));
+
+    if ( typeof ack_list[queuename] == 'undefined' ) {
+        ack_list[queuename] = {};
+    }
+
+    // see if this token exists in the ack_list
+    if ( ack_list[queuename][token] == null ) {
+        // not there, so let's get out of here
+        res.writeHead(200, {'Content-Type': 'text/json'});
+        var result = { 'status' : { 'code' : 100, 'msg' : 'Token not known' } };
+        res.end(JSON.stringify( result ) + '\n' );
+        return;
+    }
+
+    // yes, it is in the ack_list, so just delete it
+    var timeout = ack_list[queuename][token].timeout;
+    clearTimeout(timeout);
+    delete ack_list[queuename][token];
+
+    // write result to client
+    return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue', {});
+}
+
+// ----------------------------------------------------------------------------
+// utility functions
 
 function return_result (res, http_code, code, msg, result) {
     res.writeHead(http_code, {'Content-Type': 'application/json'});
@@ -233,3 +251,5 @@ function pad (value, count) {
     }
     return result;
 }
+
+// ----------------------------------------------------------------------------
