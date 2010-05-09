@@ -95,6 +95,7 @@ function add (req, parts, res) {
 
     var queuename = make_queuename(parts.query.queue);
     var msg = parts.query.msg;
+    var id = parts.query.id;
     sys.puts('Message = ' + msg);
     sys.puts('Queue   = ' + queuename);
 
@@ -104,11 +105,16 @@ function add (req, parts, res) {
         return;
     }
 
+    // if there is no queue of that name yet, make one
     if ( typeof queue[queuename] == 'undefined' ) {
         queue[queuename] = [];
     }
 
-    queue[queuename].push({ 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
+    // 'id' is optional, but create one if we need to
+    id = id || make_token();
+
+    // add the message to the queue
+    queue[queuename].push({ 'id' : id, 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 });
     sys.puts('msg = ' + JSON.stringify(msg));
 
     return_result(res, 200, 0, 'Message Added', {});
@@ -165,7 +171,7 @@ function get (req, parts, res) {
     ack_list[queuename][token] = { 'msg' : msg, 'timeout' : timeout };
 
     // ToDo: replace this with return_result
-    return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
+    return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
 }
 
 function ack (req, parts, res) {
