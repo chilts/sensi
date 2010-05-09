@@ -61,7 +61,8 @@ http.createServer(function (req, res) {
     sys.puts('ack_list = ' + JSON.stringify(ack_list));
     sys.puts('');
 
-    if ( parts.pathname == '/add' ) {
+    switch ( parts.pathname ) {
+    case '/add':
         sys.puts('Got an /add');
 
         var queuename = make_queuename(parts.query.queue);
@@ -83,8 +84,9 @@ http.createServer(function (req, res) {
         sys.puts('msg = ' + JSON.stringify(msg));
 
         return_result(res, 200, 0, 'Message Added', {});
-    }
-    else if ( parts.pathname == '/get' ) {
+        break;
+
+    case '/get':
         sys.puts('Got a /get');
 
         sys.puts('Queue = ' + parts.query.queue);
@@ -136,8 +138,9 @@ http.createServer(function (req, res) {
 
         // ToDo: replace this with return_result
         return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
-    }
-    else if ( parts.pathname == '/ack' ) {
+        break;
+
+    case '/ack':
         sys.puts('Got an /ack');
 
         var queuename = make_queuename(parts.query.queue);
@@ -167,10 +170,13 @@ http.createServer(function (req, res) {
 
         // write result to client
         return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue', {});
-    }
-    else {
+        break;
+
+    default:
         return_result(res, 404, 404, 'Not Found', {});
+        break;
     }
+
     sys.puts('');
     sys.puts('queue   = ' + JSON.stringify(queue));
     sys.puts('ack_list = ' + JSON.stringify(ack_list));
