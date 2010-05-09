@@ -66,6 +66,12 @@ http.createServer(function (req, res) {
         sys.puts('Message = ' + msg);
         sys.puts('Queue   = ' + queuename);
 
+        // return error if the message is undefined (an empty msg is ok)
+        if ( typeof msg == 'undefined' ) {
+            return_error(res, 1, 'Message is undefined');
+            return;
+        }
+
         if ( typeof queue[queuename] == 'undefined' ) {
             queue[queuename] = [];
         }
