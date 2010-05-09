@@ -43,6 +43,9 @@ var url = require('url');
 var queue = {};
 var ack_list = {};
 
+// make sure the default queue is always there
+queue['default'] = [];
+
 http.createServer(function (req, res) {
     sys.puts('- START ------------------------------------------------------------------------');
     // get the different parts of the URL
