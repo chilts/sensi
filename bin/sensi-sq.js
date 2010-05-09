@@ -69,7 +69,8 @@ http.createServer(function (req, res) {
         if ( typeof queue[queuename] == 'undefined' ) {
             queue[queuename] = [];
         }
-        queue[queuename].push(msg);
+
+        queue[queuename].push({ 'text' : msg, 'inserted' : iso8601() });
 
         return_result(res, 200, 0, 'Message Added', {});
     }
@@ -123,7 +124,7 @@ http.createServer(function (req, res) {
         ack_list[queuename][token] = { 'msg' : msg, 'timeout' : timeout };
 
         // ToDo: replace this with return_result
-        return_result(res, 200, 0, 'Message Returned', { 'msg' : msg, 'token' : token });
+        return_result(res, 200, 0, 'Message Returned', { 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted });
     }
     else if ( parts.pathname == '/ack' ) {
         sys.puts('Got an /ack');
@@ -197,4 +198,21 @@ function random_string (length) {
         length--;
     }
     return str;
+}
+
+function iso8601 () {
+    var date = new Date();
+    var str = date.getUTCFullYear() + '-' + pad(date.getUTCMonth(), 2) + '-' + pad(date.getUTCDay(), 2) + 'T';
+    str = str + 'T';
+    str = str + date.getUTCHours() + ':' + pad(date.getUTCMinutes(), 2) + ':' + pad(date.getUTCSeconds(), 2) + '.' + pad(date.getUTCMilliseconds(), 3) + 'Z';
+    return str;
+}
+
+// this function pads the value to x significant figures
+function pad (value, count) {
+    var result = value + ''; // convert into a string first!
+    while ( result.length < count ) {
+        result = '0' + result;
+    }
+    return result;
 }
