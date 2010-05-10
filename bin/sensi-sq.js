@@ -43,28 +43,12 @@ var sys = require('sys')
 // global vars :)
 var queue = {};
 var ack_list = {};
-var cfg = {};
+var cfg = read_config_file( process.argv[2] || '/etc/sensi/sq.json');
 
-// read the config file (if it exists)
-var cfg = JSON.parse(fs.readFileSync('./sensi-sq.json'));
-sys.puts('cfg=' + JSON.stringify(cfg));
-cfg['port'] = cfg['port'] || '8000';
+// side effects to set things in 'queue'
+setup_queues( cfg );
 
-// make sure the default queue is always there
-queue['default'] = { 'queue' : [], 'timeout' : 30 };
-
-// loop through any queues in the config file and set the timeouts
-for (queue_cfg in cfg['queues'] ) {
-    // if no timeout specified, set it to be 30 secs
-    queue[cfg['queues'][queue_cfg]['name']] = {
-        'queue' : [],
-        'timeout' : cfg['queues'][queue_cfg]['timeout'] || 30
-    };
-}
-
-// show what the queues now looks like
-sys.puts('queue   = ' + JSON.stringify(queue));
-
+// create the webserver
 http.createServer(function (req, res) {
     sys.puts('- START ------------------------------------------------------------------------');
     // get the different parts of the URL
@@ -101,8 +85,6 @@ http.createServer(function (req, res) {
     sys.puts('ack_list = ' + JSON.stringify(ack_list));
     sys.puts('- END --------------------------------------------------------------------------');
 }).listen(cfg['port']);
-
-sys.puts('Server running at http://127.0.0.1:' + cfg['port'] + '/');
 
 // ----------------------------------------------------------------------------
 // response functions
@@ -225,6 +207,35 @@ function ack (req, parts, res) {
 
 // ----------------------------------------------------------------------------
 // utility functions
+
+function read_config_file(filename) {
+    // load up the config file
+    try {
+        var cfg = JSON.parse(fs.readFileSync(filename));
+    }
+    catch (err) {
+        var cfg = {};
+    }
+
+    // set some defaults if not set already
+    cfg['port'] = cfg['port'] || '8000';
+
+    return cfg;
+}
+
+function setup_queues (cfg) {
+    // make sure the default queue is always there
+    queue['default'] = { 'queue' : [], 'timeout' : 30 };
+
+    // loop through any queues in the config file and set the timeouts
+    for (queue_cfg in cfg['queues'] ) {
+        // if no timeout specified, set it to be 30 secs
+        queue[cfg['queues'][queue_cfg]['name']] = {
+            'queue' : [],
+            'timeout' : cfg['queues'][queue_cfg]['timeout'] || 30
+        };
+    }
+}
 
 function return_result (res, http_code, code, msg, result) {
     res.writeHead(http_code, {'Content-Type': 'application/json'});
