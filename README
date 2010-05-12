@@ -13,6 +13,18 @@ But don't be scared, most utilities fall at just a couple of hundred lines so
 they are easily understanable and can be extended to your own needs. Patches
 welcome :)
 
+Sensi currently contains:
+
+* a queue system
+
+In the future, Sensi will also contain:
+
+* a distributed queue system
+* a notification system
+* a distributed notification system
+
+... and maybe some other things too.
+
 -------------------------------------------------------------------------------
 
 This program is free software: you can redistribute it and/or modify it under
