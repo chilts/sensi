@@ -1,11 +1,6 @@
 #!//usr/local/bin/node
 // ----------------------------------------------------------------------------
 //
-// Sensi - set of 'Infrastructure as a Service' utilities which run on NodeJS.
-// Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
-//
-// ----------------------------------------------------------------------------
-//
 // sensi-sq.js is a queue infrastructure service. This simple queue provides
 // the ability to add, get and ack messages but also provides other useful
 // information such as the time the message was added and the number of
@@ -17,12 +12,15 @@
 //
 // ----------------------------------------------------------------------------
 //
+// Sensi - set of 'Infrastructure as a Service' utilities which run on NodeJS.
+// Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
+//
 // This file is part of Sensi.
 //
 // This program is free software: you can redistribute it and/or modify it
-// under the terms of the Affero GNU General Public License as published by the
-// Free Software Foundation, either version 3 of the License, or (at your
-// option) any later version.
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
 //
 // This program is distributed in the hope that it will be useful, but WITHOUT
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
