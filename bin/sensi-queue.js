@@ -1,14 +1,11 @@
 #!//usr/local/bin/node
 // ----------------------------------------------------------------------------
 //
-// sensi-sq.js is a queue infrastructure service. This simple queue provides
+// sensi-queue.js is a queue infrastructure service. This simple queue provides
 // the ability to add, get and ack messages but also provides other useful
 // information such as the time the message was added and the number of
 // attempted deliveries. It has a default queue but you can use as many queues
 // as you require which are automatically created.
-//
-// If you require a distributed and therefore redundant queue, please look at
-// sensi-dq.js.
 //
 // ----------------------------------------------------------------------------
 //
@@ -40,7 +37,7 @@ var sys = require('sys')
 
 // global vars :)
 var queue = {};
-var cfg = read_config_file( process.argv[2] || '/etc/sensi/sq.json');
+var cfg = read_config_file( process.argv[2] || '/etc/sensi/sensi-queue.json');
 
 // side effects to set things in 'queue'
 setup_queues( cfg );
