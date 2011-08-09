@@ -56,7 +56,7 @@ http.createServer(function (req, res) {
         op_ack(req, parts, res);
         break;
 
-    case '/del':
+    case '/_del':
         op_del(req, parts, res);
         break;
 
