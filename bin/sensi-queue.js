@@ -52,19 +52,23 @@ http.createServer(function (req, res) {
 
     switch ( parts.pathname ) {
     case '/add':
-        add(req, parts, res);
+        op_add(req, parts, res);
         break;
 
     case '/get':
-        get(req, parts, res);
+        op_get(req, parts, res);
         break;
 
     case '/ack':
-        ack(req, parts, res);
+        op_ack(req, parts, res);
         break;
 
     case '/del':
-        del(req, parts, res);
+        op_del(req, parts, res);
+        break;
+
+    case '/info':
+        op_info(req, parts, res);
         break;
 
     default:
@@ -91,7 +95,7 @@ function error(action, msg) {
     console.log(iso8601() + " ERRR: " + action + ": " + msg);
 }
 
-function add(req, parts, res) {
+function op_add(req, parts, res) {
     var queuename = parts.query.queue || 'default';
     var msg = parts.query.msg;
     var id = parts.query.id || make_token();
@@ -136,7 +140,7 @@ function add(req, parts, res) {
     }
 }
 
-function get(req, parts, res) {
+function op_get(req, parts, res) {
     var queuename = parts.query.queue || 'default';
 
     // if there is no queue for this at all, bail
@@ -195,7 +199,7 @@ function get(req, parts, res) {
     return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'msg' : msg.msg, 'token' : token, 'inserted' : msg.inserted, 'attempted' : msg.attempted, 'deliveries' : msg.deliveries });
 }
 
-function ack(req, parts, res) {
+function op_ack(req, parts, res) {
     var queuename = parts.query.queue || 'default';
     var token = parts.query.token;
 
@@ -245,7 +249,7 @@ function ack(req, parts, res) {
     }
 }
 
-function del(req, parts, res) {
+function op_del(req, parts, res) {
     var queuename = parts.query.queue || 'default';
     var id = parts.query.id;
 
@@ -268,6 +272,26 @@ function del(req, parts, res) {
     info("del", "id=" + id);
     delete queue[queuename].msg[id];
     return_result(res, 200, 0, 'Message Deleted');
+}
+
+function op_info(req, parts, res) {
+    var queuename = parts.query.queue || 'default';
+
+    // if there is no queue for this at all, bail
+    if ( typeof queue[queuename] === 'undefined' ) {
+        return_error(res, 1, 'No queue of that name found');
+        info('info', "error - unknown queue (queue=" + queuename + ")");
+        return;
+    }
+
+    var q = queue[queuename];
+    var data = {
+        "name "      : queuename,
+        "length"     : Object.keys(q.msg).length,
+        "processing" : Object.keys(q.ack).length
+    };
+    info('info', "queue=" + queuename);
+    return_result(res, 200, 0, 'Info for queue ' + queuename, data);
 }
 
 // ----------------------------------------------------------------------------
