@@ -106,13 +106,34 @@ function add(req, parts, res) {
     // empty messages are ok
     ensure_queue(queuename);
 
-    // add the message to the msg pile and add the 'id' to the queue
-    queue[queuename].msg[id] = { 'id' : id, 'msg' : msg, 'inserted' : iso8601(), 'deliveries' : 0 };
-    queue[queuename].queue.push(id);
+    // make the actual add into a function so we can call it either when the
+    // file has been written or immediately (if no filestore)
+    var add_to_queue = function() {
+        // add the message to the msg pile and add the 'id' to the queue
+        queue[queuename].msg[id] = { 'id' : id, 'msg' : msg, 'inserted' : iso8601(), 'deliveries' : 0 };
+        queue[queuename].queue.push(id);
 
-    log('add', "id=" + id);
-    // console.log("/add: message added (id=" + id + ")");
-    return_success(res, 0, 'Message Added');
+        info('add', "id=" + id);
+        return_success(res, 0, 'Message Added');
+    };
+
+    // see if we need to store it
+    if ( cfg.store ) {
+        var filename = cfg.filestore + "/" + id + ".txt";
+        fs.writeFile(filename, msg, function (err) {
+            if (err) {
+                error('fs.writeFile', "couldn't save file: " + filename);
+            }
+            else {
+                info('fs.writeFile', filename);
+                add_to_queue();
+            }
+        });
+    }
+    else {
+        // call the add immediately
+        add_to_queue();
+    }
 }
 
 function get(req, parts, res) {
@@ -209,6 +230,19 @@ function ack(req, parts, res) {
     // write result to client
     info("ack", "id=" + msg.id + ", token=" + token);
     return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue');
+
+    // finally, remove the file
+    if ( cfg.store ) {
+        var filename = cfg.filestore + "/" + id + ".txt";
+        fs.unlink(filename, function(err) {
+            if (err) {
+                error('fs.unlink', "couldn't unlink file: " + filename);
+            }
+            else {
+                info('fs.unlink', filename);
+            }
+        });
+    }
 }
 
 function del(req, parts, res) {
@@ -259,6 +293,13 @@ function read_config_file(filename) {
     // set some defaults if not set already
     cfg.port = cfg.port || '8000';
     sys.puts('Config: ' + sys.inspect(cfg));
+
+    // see if they have defined a storage area
+    if ( typeof cfg.filestore !== "undefined" ) {
+        // check that this directory exists
+        cfg.store = true;
+        sys.puts("Reading outstanding files from '" + cfg.filestore + "/'");
+    }
 
     return cfg;
 }
