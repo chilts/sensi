@@ -37,23 +37,18 @@ var sys = require('sys')
 
 // global vars :)
 var queue = {};
-var cfg = read_config_file( process.argv[2] || '/etc/sensi/sensi-queue.json');
+var cfg = read_config_file( process.argv[2] );
 
 // side effects to set things in 'queue'
 setup_queues( cfg );
 
 // create the webserver
 http.createServer(function (req, res) {
-    sys.puts('- START ------------------------------------------------------------------------');
     // get the different parts of the URL
     var parts = url.parse( req.url, true );
-    if ( parts.query == null )
+    if ( parts.query === null ) {
         parts.query = {};
-
-    sys.puts('method  = ' + req.method);
-    sys.puts('path    = ' + parts.pathname);
-    sys.puts('queue   = ' + JSON.stringify(queue));
-    sys.puts('');
+    }
 
     switch ( parts.pathname ) {
     case '/add':
@@ -73,233 +68,234 @@ http.createServer(function (req, res) {
         break;
 
     default:
-        return_result(res, 404, 404, 'Not Found', {});
+        return_result(res, 404, 404, 'Not Found');
         break;
     }
 
-    sys.puts('');
-    sys.puts('queue   = ' + JSON.stringify(queue));
-    sys.puts('- END --------------------------------------------------------------------------');
 }).listen(cfg.port);
 
-sys.puts('Server running at http://127.0.0.1:' + cfg.port + '/');
+sys.puts('Server now listening on http://127.0.0.1:' + cfg.port + '/');
 
 // ----------------------------------------------------------------------------
 // response functions
 
-function add (req, parts, res) {
-    var queuename = make_queuename(parts.query.queue);
+function log(action, msg) {
+    console.log(iso8601() + " - " + action + ": " + msg);
+}
+
+function add(req, parts, res) {
+    var queuename = parts.query.queue || 'default';
     var msg = parts.query.msg;
     var id = parts.query.id || make_token();
 
-    // return error if the message is undefined (an empty msg is ok)
-    if ( typeof msg == 'undefined' ) {
+    // return error if the message is undefined
+    if ( typeof msg === 'undefined' ) {
         return_error(res, 1, 'Message is undefined');
+        console.log("/add: error - message not specified");
+        log('add', "error - message not specified");
         return;
     }
 
+    // empty messages are ok
     ensure_queue(queuename);
 
     // add the message to the msg pile and add the 'id' to the queue
-    queue[queuename].msg[id] = { 'id' : id, 'text' : msg, 'inserted' : iso8601(), 'delivered' : 0 };
+    queue[queuename].msg[id] = { 'id' : id, 'msg' : msg, 'inserted' : iso8601(), 'deliveries' : 0 };
     queue[queuename].queue.push(id);
 
-    return_result(res, 200, 0, 'Message Added', {});
+    log('add', "id=" + id);
+    // console.log("/add: message added (id=" + id + ")");
+    return_success(res, 0, 'Message Added');
 }
 
-function get (req, parts, res) {
-    var queuename = make_queuename(parts.query.queue);
+function get(req, parts, res) {
+    var queuename = parts.query.queue || 'default';
 
     // if there is no queue for this at all, bail
-    if ( typeof queue[queuename] == 'undefined' ) {
+    if ( typeof queue[queuename] === 'undefined' ) {
         return_error(res, 1, 'No queue of that name found');
+        log('get', "error - unknown queue (queue=" + queuename + ")");
+        // console.log("/get: );
         return;
     }
 
-    // if there are no messages on the queue, bail
-    if ( queue[queuename].queue.length == 0 ) {
-        return_error(res, 2, 'No messages found');
-        return;
-    }
+    var q = queue[queuename];
 
     // keep looking through the message queue until you find one which hasn't
     // been deleted
     var id = null;
-    while ( id == null && queue[queuename].queue.length > 0 ) {
-        id = queue[queuename].queue.shift();
-        // see if this message is deleted
-        if ( queue[queuename].deleted[id] == 1 ) {
-            // delete all reference to this id
-            delete queue[queuename].deleted[id];
+    while ( id === null && q.queue.length > 0 ) {
+        id = q.queue.shift();
+        // see if this message still exists
+        if ( typeof q.msg[id] === 'undefined' ) {
+            // nope, this has been deleted
             id = null;
         }
     }
 
-    // all the messages on the queue were marked for deletion
-    if ( id == null ) {
-        return_error(res, 3, 'No messages found');
+    // either there were no messages or all the messages on the queue were
+    // marked for deletion
+    if ( id === null ) {
+        return_success(res, 0, 'No messages found', null);
+        log("get", "no messages (queue=" + queuename + ")");
         return;
     }
 
-    // get the message and inc the number of times it has been delivered
-    var msg = queue[queuename].msg[id];
-    msg.delivered++;
-
-    // generate a new token for this message and remember it
+    // generate a new token for this message and put onto the ack stash
     var token = make_token();
 
-    var timeout = setTimeout(function() {
-        sys.puts('- TIMEOUT ----------------------------------------------------------------------');
-        sys.puts('queue   = ' + JSON.stringify(queue));
-        sys.puts('');
-        sys.puts('Message (ack=' + token + ') timed out');
+    // get the message from the msg stash
+    var msg = q.msg[id];
+    q.ack[token] = msg.id;
+
+    // inc the number of deliveries
+    msg.attempted = iso8601();
+    msg.deliveries++;
+
+    // create a timeout so we can store it on the message itself
+    msg.timeout = setTimeout(function() {
+        log("timeout", "id=" + id + ", token=" + token + ", deliveries=" + msg.deliveries);
 
         // put this message back on the queue
-        queue[queuename].queue.unshift(id);
         delete msg.token; // no use for this anymore
         delete msg.timeout; // no use for this anymore
-        delete queue[queuename].ack[token];
+        delete q.ack[token];
+        q.msg[id] = msg;
+        q.queue.unshift(id);
+    }, q.timeout * 1000);
 
-        sys.puts('');
-        sys.puts('queue   = ' + JSON.stringify(queue));
-        sys.puts('- END --------------------------------------------------------------------------');
-    }, queue[queuename].timeout * 1000);
-
-    // put the id in the ack pile and save this timeout and token on the message
-    queue[queuename].ack[token] = id;
-    msg.token = token;
-    msg.timeout = timeout;
-
-    return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'text' : msg.text, 'token' : token, 'inserted' : msg.inserted, 'delivered' : msg.delivered });
+    log("get", "id=" + msg.id + ", token=" + token + ", attempted=" + msg.deliveries);
+    return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'msg' : msg.msg, 'token' : token, 'inserted' : msg.inserted, 'attempted' : msg.attempted, 'deliveries' : msg.deliveries });
 }
 
-function ack (req, parts, res) {
-    var queuename = make_queuename(parts.query.queue);
+function ack(req, parts, res) {
+    var queuename = parts.query.queue || 'default';
     var token = parts.query.token;
 
-    // see if this token exists in the ack pile
-    if ( queue[queuename].ack[token] == null ) {
-        // not there, so let's get out of here
-        res.writeHead(200, {'Content-Type': 'text/json'});
-        var result = { 'status' : { 'code' : 100, 'msg' : 'Token not known' } };
-        res.end(JSON.stringify( result ) + '\n' );
+    if ( typeof token === 'undefined' ) {
+        return_result(res, 200, 6, 'Token not specified (undefined)');
+        log("ack", "error - token not specified");
         return;
     }
+
+    // see if this token exists in the ack pile
+    if ( typeof queue[queuename].ack[token] === 'undefined' ) {
+        // not there, so let's get out of here
+        return_result(res, 200, 6, 'Unknown Token: ' + token);
+        log("ack", "error - unknown token (token=" + token + ")");
+        return;
+    }
+
+    // get the id from the token, and then get the message
+    var id = queue[queuename].ack[token];
+    var msg = queue[queuename].msg[id];
 
     // yes, it is in the ack pile, so delete it and remove it from the msg pile
     // 1) cancel the timeout
-    var id = queue[queuename].ack[token];
-    // var msg = queue[queuename].msg[id];
-    clearTimeout( queue[queuename].msg[id].timeout );
+    clearTimeout( msg.timeout );
 
     // 2) remove from the ack pile
     delete queue[queuename].ack[token];
 
     // 3) remove from the message pile
-    delete queue[queuename].msg[id];
+    delete queue[queuename].msg[msg.id];
 
     // write result to client
-    return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue', {});
+    log("ack", "id=" + msg.id + ", token=" + token);
+    return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue');
 }
 
-function del (req, parts, res) {
-    var queuename = make_queuename(parts.query.queue);
+function del(req, parts, res) {
+    var queuename = parts.query.queue || 'default';
     var id = parts.query.id;
 
-    // see if this id exists at all
-    if ( queue[queuename].msg[id] == null ) {
-        // not there, so let's get out of here
-        res.writeHead(200, {'Content-Type': 'text/json'});
-        var result = { 'status' : { 'code' : 100, 'msg' : 'Message ID not known' } };
-        res.end(JSON.stringify( result ) + '\n' );
+    if ( typeof id === 'undefined' ) {
+        log("del", "error - message id not specified");
+        return_result(res, 200, 7, 'Invalid ID (undefined)');
         return;
     }
 
-    // yes, it is known about, so firstly check if we need to cancel a timeout
-    var msg = queue[queuename].msg[id];
-
-    // If this message has a token, then it should be removed from the ack
-    // pile, the timeout cancelled and not put onto the deleted pile (since it
-    // is no longer in the queue).
-    if ( msg.token ) {
-        delete queue[queuename].ack[msg.token];
-        clearTimeout(msg.timeout);
-        // no need of these things anymore
-        delete msg.token;
-        delete msg.timeout;
-    }
-    else {
-        // since this msg is still in the queue (ie. it has no timeout), then
-        // it needs to be remembered on the deleted queue so we don't return it
-        queue[queuename].deleted[id] = 1;
+    // see if this id exists at all
+    if ( queue[queuename].msg[id] == null ) {
+        // not there at all, so get out of here
+        log("del", "error - unknown message (id=" + id + ")");
+        return_result(res, 200, 7, 'Unknown ID');
+        return;
     }
 
-    // finally, delete it from the msg pile
+    // just delete from the msg stash and deal with this id when it appears
+    // on the queue (or when an ack timer returns)
+    log("del", "id=" + id);
     delete queue[queuename].msg[id];
-
-    // write result to client
-    return_result(res, 200, 0, 'Message Successfully Deleted', {});
+    return_result(res, 200, 0, 'Message Deleted');
 }
 
 // ----------------------------------------------------------------------------
 // utility functions
 
 function read_config_file(filename) {
+    // check if filename is defined
+    if ( typeof filename === 'undefined' ) {
+        console.log("No config specified");
+        return { "port" : 8000 };
+    }
+
     // load up the config file
+    var cfg;
     try {
-        var cfg = JSON.parse(fs.readFileSync(filename));
+        cfg = JSON.parse(fs.readFileSync(filename));
     }
     catch (err) {
-        var cfg = {};
+        console.warn("Couldn't read config file: " + err);
+        process.exit(2)
     }
 
     // set some defaults if not set already
     cfg.port = cfg.port || '8000';
-    sys.puts(JSON.stringify(cfg));
+    sys.puts('Config: ' + sys.inspect(cfg));
 
     return cfg;
 }
 
 function setup_queues (cfg) {
     // make sure the default queue is always there
-    queue['default'] = { 'msg' : {}, 'queue' : [], 'timeout' : 30, 'ack' : {}, 'deleted' : {} };
+    // queue['default'] = { 'msg' : {}, 'queue' : [], 'timeout' : 30, 'ack' : {}, 'deleted' : {} };
+    ensure_queue('default', 30);
 
     // loop through any queues in the config file and set the timeouts
     for (queue_cfg in cfg['queues'] ) {
-        // Each queue has:
-        // * msg     - a hash containing the messages themselves
-        // * queue   - an array showing the order of the messages
-        // * timeout - the default timeout for this queue
-        // * ack     - a hash showing which have been delivered and awaiting an ack
-        // * deleted - a hash showing which have been deleted
-        queue[cfg['queues'][queue_cfg]['name']] = {
-            'msg'     : {},
-            'queue'   : [],
-            'timeout' : cfg['queues'][queue_cfg]['timeout'] || 30,
-            'ack'     : {},
-            'deleted' : {}
+        ensure_queue( cfg['queues'][queue_cfg]['name'], cfg['queues'][queue_cfg]['timeout'] );
+    }
+}
+
+function ensure_queue(queuename, timeout) {
+    // set the default timeout (if none given)
+    timeout = timeout || 30;
+
+    // create the queue if not already defined
+    if ( typeof queue[queuename] === 'undefined' ) {
+        queue[queuename] = {
+            'msg'     : {}, // the IDs of all the messages we know about
+            'queue'   : [], // the actual queue itself (ie. the proper order of messages)
+            'timeout' : timeout, // the timeout for this queue
+            'ack'     : {}, // all the messages that are awaiting an 'ack'
+            'deleted' : {}  // all messages that have been deleted (so they don't get returned)
         };
     }
 }
 
-function ensure_queue(queuename) {
-    if ( typeof queue[queuename] == 'undefined' ) {
-        queue[queuename] = { 'msg' : {}, 'queue' : [], 'timeout' : 30, 'ack' : {}, 'deleted' : {} };
-    }
-}
-
-function return_result (res, http_code, code, msg, result) {
+function return_result(res, http_code, code, msg, data) {
     res.writeHead(http_code, {'Content-Type': 'application/json'});
-    var resp = { 'status' : { 'code' : code, 'msg' : msg }, 'result' : result };
+    var resp = { 'status' : { 'ok' : (code === 0), 'code' : code, 'msg' : msg }, 'data' : data };
     res.end(JSON.stringify( resp ) + '\n' );
 }
 
-function return_error (res, code, msg) {
-    return_result(res, 200, code, msg, {});
+function return_success(res, code, msg, data) {
+    return_result(res, 200, code, msg, data);
 }
 
-function make_queuename (q) {
-    return q ? q : 'default';
+function return_error(res, code, msg) {
+    return_result(res, 200, code, msg);
 }
 
 function make_token () {
@@ -320,7 +316,7 @@ function random_string (length) {
     return str;
 }
 
-function iso8601 () {
+function iso8601() {
     var date = new Date();
     var str = date.getUTCFullYear() + '-' + pad(date.getUTCMonth(), 2) + '-' + pad(date.getUTCDay(), 2) + 'T';
     str = str + 'T';
