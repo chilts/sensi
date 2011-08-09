@@ -83,16 +83,24 @@ sys.puts('Server listening on http://127.0.0.1:' + cfg.port + '/');
 // ----------------------------------------------------------------------------
 // response functions
 
+function debug(action, msg) {
+    console.log("%s DEBUG: %s - %s", iso8601(), action, msg);
+}
+
 function info(action, msg) {
-    console.log(iso8601() + " INFO: " + action + ": " + msg);
+    console.log("%s  INFO: %s - %s", iso8601(), action, msg);
 }
 
 function warn(action, msg) {
-    console.log(iso8601() + " WARN: " + action + ": " + msg);
+    console.log("%s  WARN : %s - %s", iso8601(), action, msg);
 }
 
 function error(action, msg) {
-    console.log(iso8601() + " ERRR: " + action + ": " + msg);
+    console.log("%s ERROR: %s - %s", iso8601(), action, msg);
+}
+
+function fatal(action, msg) {
+    console.log("%s FATAL: %s - %s", iso8601(), action, msg);
 }
 
 function op_add(req, parts, res) {
