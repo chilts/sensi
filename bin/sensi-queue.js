@@ -74,13 +74,21 @@ http.createServer(function (req, res) {
 
 }).listen(cfg.port);
 
-sys.puts('Server now listening on http://127.0.0.1:' + cfg.port + '/');
+sys.puts('Server listening on http://127.0.0.1:' + cfg.port + '/');
 
 // ----------------------------------------------------------------------------
 // response functions
 
-function log(action, msg) {
-    console.log(iso8601() + " - " + action + ": " + msg);
+function info(action, msg) {
+    console.log(iso8601() + " INFO: " + action + ": " + msg);
+}
+
+function warn(action, msg) {
+    console.log(iso8601() + " WARN: " + action + ": " + msg);
+}
+
+function error(action, msg) {
+    console.log(iso8601() + " ERRR: " + action + ": " + msg);
 }
 
 function add(req, parts, res) {
@@ -91,8 +99,7 @@ function add(req, parts, res) {
     // return error if the message is undefined
     if ( typeof msg === 'undefined' ) {
         return_error(res, 1, 'Message is undefined');
-        console.log("/add: error - message not specified");
-        log('add', "error - message not specified");
+        info('add', "message not specified");
         return;
     }
 
@@ -114,8 +121,7 @@ function get(req, parts, res) {
     // if there is no queue for this at all, bail
     if ( typeof queue[queuename] === 'undefined' ) {
         return_error(res, 1, 'No queue of that name found');
-        log('get', "error - unknown queue (queue=" + queuename + ")");
-        // console.log("/get: );
+        info('get', "error - unknown queue (queue=" + queuename + ")");
         return;
     }
 
@@ -137,7 +143,7 @@ function get(req, parts, res) {
     // marked for deletion
     if ( id === null ) {
         return_success(res, 0, 'No messages found', null);
-        log("get", "no messages (queue=" + queuename + ")");
+        info("get", "no messages (queue=" + queuename + ")");
         return;
     }
 
@@ -154,7 +160,7 @@ function get(req, parts, res) {
 
     // create a timeout so we can store it on the message itself
     msg.timeout = setTimeout(function() {
-        log("timeout", "id=" + id + ", token=" + token + ", deliveries=" + msg.deliveries);
+        info("timeout", "id=" + id + ", token=" + token + ", deliveries=" + msg.deliveries);
 
         // put this message back on the queue
         delete msg.token; // no use for this anymore
@@ -164,7 +170,7 @@ function get(req, parts, res) {
         q.queue.unshift(id);
     }, q.timeout * 1000);
 
-    log("get", "id=" + msg.id + ", token=" + token + ", attempted=" + msg.deliveries);
+    info("get", "id=" + msg.id + ", token=" + token + ", attempted=" + msg.deliveries);
     return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'msg' : msg.msg, 'token' : token, 'inserted' : msg.inserted, 'attempted' : msg.attempted, 'deliveries' : msg.deliveries });
 }
 
@@ -174,7 +180,7 @@ function ack(req, parts, res) {
 
     if ( typeof token === 'undefined' ) {
         return_result(res, 200, 6, 'Token not specified (undefined)');
-        log("ack", "error - token not specified");
+        info("ack", "error - token not specified");
         return;
     }
 
@@ -182,7 +188,7 @@ function ack(req, parts, res) {
     if ( typeof queue[queuename].ack[token] === 'undefined' ) {
         // not there, so let's get out of here
         return_result(res, 200, 6, 'Unknown Token: ' + token);
-        log("ack", "error - unknown token (token=" + token + ")");
+        info("ack", "error - unknown token (token=" + token + ")");
         return;
     }
 
@@ -201,7 +207,7 @@ function ack(req, parts, res) {
     delete queue[queuename].msg[msg.id];
 
     // write result to client
-    log("ack", "id=" + msg.id + ", token=" + token);
+    info("ack", "id=" + msg.id + ", token=" + token);
     return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue');
 }
 
@@ -210,7 +216,7 @@ function del(req, parts, res) {
     var id = parts.query.id;
 
     if ( typeof id === 'undefined' ) {
-        log("del", "error - message id not specified");
+        info("del", "error - message id not specified");
         return_result(res, 200, 7, 'Invalid ID (undefined)');
         return;
     }
@@ -218,14 +224,14 @@ function del(req, parts, res) {
     // see if this id exists at all
     if ( queue[queuename].msg[id] == null ) {
         // not there at all, so get out of here
-        log("del", "error - unknown message (id=" + id + ")");
+        info("del", "error - unknown message (id=" + id + ")");
         return_result(res, 200, 7, 'Unknown ID');
         return;
     }
 
     // just delete from the msg stash and deal with this id when it appears
     // on the queue (or when an ack timer returns)
-    log("del", "id=" + id);
+    info("del", "id=" + id);
     delete queue[queuename].msg[id];
     return_result(res, 200, 0, 'Message Deleted');
 }
