@@ -1,29 +1,8 @@
 -------------------------------------------------------------------------------
 
 Sensi - a set of 'Infrastructure as a Service' utilities which run on NodeJS.
-Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
-
--------------------------------------------------------------------------------
-
-Sensi is a set of infrastructure utilities that you can use internally on your
-projects. All utilities are written in NodeJS and are all fast event driven
-applications written in JavaScript.
-
-But don't be scared, most utilities fall at just a couple of hundred lines so
-they are easily understanable and can be extended to your own needs. Patches
-welcome :)
-
-Sensi currently contains:
-
-* a queue system
-
-In the future, Sensi will also contain:
-
-* a distributed queue system
-* a notification system
-* a distributed notification system
-
-... and maybe some other things too.
+Copyright (c) 2011 AppsAttic Ltd.
+Written by Andrew Chilton (chilts@appsattic.com)
 
 -------------------------------------------------------------------------------
 
@@ -41,10 +20,24 @@ this program. If not, see http://www.gnu.org/licenses/.
 
 -------------------------------------------------------------------------------
 
-AppsAttic, hereby disclaims all copyright interest in the program suite "Sensi"
-(which is a set of 'Infrastructure as a Service' utilities) written by Andrew
-Chilton.
+Sensi is a set of infrastructure utilities that you can use internally on your
+projects. All utilities are written in NodeJS and are all fast event driven
+applications written in JavaScript.
 
-Signed: Andrew Chilton (Director), 9 May 2010
+But don't be scared, most utilities fall at just a couple of hundred lines so
+they are easily understandable and can be extended to your own needs. Patches
+are welcome though this is opinionated software - they each do one thing and do
+it well - keeping them simple is the aim of the game. :)
+
+Sensi currently contains:
+
+* a queue system - sensi-queue.js
+
+In the future, Sensi will also contain:
+
+* a notification system
+* a file storage system
+
+... and maybe some other things too.
 
 -------------------------------------------------------------------------------

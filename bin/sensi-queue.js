@@ -1,16 +1,9 @@
-#!//usr/local/bin/node
-// ----------------------------------------------------------------------------
-//
-// sensi-queue.js is a queue infrastructure service. This simple queue provides
-// the ability to add, get and ack messages but also provides other useful
-// information such as the time the message was added and the number of
-// attempted deliveries. It has a default queue but you can use as many queues
-// as you require which are automatically created.
-//
+#!/usr/bin/env node
 // ----------------------------------------------------------------------------
 //
 // Sensi - set of 'Infrastructure as a Service' utilities which run on NodeJS.
-// Copyright (c) 2010 by Andrew Chilton (chilts@appsattic.com).
+// Copyright (c) 2010-2011 AppsAttic Ltd
+// Written by Andrew Chilton (chilts@appsattic.com)
 //
 // This file is part of Sensi.
 //
