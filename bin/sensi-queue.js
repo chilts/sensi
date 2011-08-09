@@ -116,6 +116,7 @@ function op_add(req, parts, res) {
         // add the message to the msg pile and add the 'id' to the queue
         queue[queuename].msg[id] = { 'id' : id, 'msg' : msg, 'inserted' : iso8601(), 'deliveries' : 0 };
         queue[queuename].queue.push(id);
+        queue[queuename].seen++;
 
         info('add', "id=" + id);
         return_success(res, 0, 'Message Added');
@@ -288,7 +289,8 @@ function op_info(req, parts, res) {
     var data = {
         "name "      : queuename,
         "length"     : Object.keys(q.msg).length,
-        "processing" : Object.keys(q.ack).length
+        "processing" : Object.keys(q.ack).length,
+        "seen"       : q.seen
     };
     info('info', "queue=" + queuename);
     return_result(res, 200, 0, 'Info for queue ' + queuename, data);
@@ -350,7 +352,8 @@ function ensure_queue(queuename, timeout) {
             'queue'   : [], // the actual queue itself (ie. the proper order of messages)
             'timeout' : timeout, // the timeout for this queue
             'ack'     : {}, // all the messages that are awaiting an 'ack'
-            'deleted' : {}  // all messages that have been deleted (so they don't get returned)
+            'deleted' : {}, // all messages that have been deleted (so they don't get returned)
+            'seen'    : 0   // rolling count of all messages seen
         };
     }
 }
