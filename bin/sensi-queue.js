@@ -205,7 +205,15 @@ function op_get(req, parts, res) {
     }, q.timeout * 1000);
 
     info("get", "id=" + msg.id + ", token=" + token + ", attempted=" + msg.deliveries);
-    return_result(res, 200, 0, 'Message Returned', { 'id' : msg.id, 'msg' : msg.msg, 'token' : token, 'inserted' : msg.inserted, 'attempted' : msg.attempted, 'deliveries' : msg.deliveries });
+    var data = {
+        'id'         : msg.id,
+        'msg'        : msg.msg,
+        'token'      : token,
+        'inserted'   : msg.inserted,
+        'attempted'  : msg.attempted,
+        'deliveries' : msg.deliveries
+    };
+    return_result( res, 200, 0, 'Message Returned', data );
 }
 
 function op_ack(req, parts, res) {
