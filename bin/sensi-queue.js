@@ -276,10 +276,14 @@ function op_del(req, parts, res) {
         return;
     }
 
-    // just delete from the msg stash and deal with this id when it appears
-    // on the queue (or when an ack timer returns)
-    info("del", "id=" + id);
+    // delete from the msg stash and deal with this id when it appears on the
+    // queue (or when an ack timer returns)
+    var msg = queue[queuename].msg[id];
+    if ( msg.timeout ) {
+        clearTimeout( msg.timeout );
+    }
     delete queue[queuename].msg[id];
+    info("del", "id=" + id);
     return_result(res, 200, 0, 'Message Deleted');
 }
 
