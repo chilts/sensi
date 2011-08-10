@@ -105,14 +105,13 @@ function op_add(req, parts, res) {
     var msg = parts.query.msg;
     var id = parts.query.id || make_token();
 
-    // return error if the message is undefined
+    // return error if the message is undefined - empty messages are ok
     if ( typeof msg === 'undefined' ) {
         return_error(res, 1, 'Message is undefined');
         info('add', "message not specified");
         return;
     }
 
-    // empty messages are ok
     ensure_queue(queuename);
 
     // make the actual add into a function so we can call it either when the
