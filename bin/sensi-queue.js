@@ -69,7 +69,7 @@ http.createServer(function (req, res) {
         break;
 
     default:
-        return_result(res, 404, 404, 'Not Found');
+        write_result(res, 404, 404, 'Not Found');
         break;
     }
 
@@ -107,7 +107,7 @@ function op_add(req, parts, res) {
 
     // return error if the message is undefined - empty messages are ok
     if ( typeof msg === 'undefined' ) {
-        return_error(res, 1, 'Message is undefined');
+        write_error(res, 1, 'Message is undefined');
         info('add', "message not specified");
         return;
     }
@@ -123,7 +123,7 @@ function op_add(req, parts, res) {
         queue[queuename].seen++;
 
         info('add', "id=" + id);
-        return_success(res, 0, 'Message Added');
+        write_success(res, 'Message Added');
     };
 
     // see if we need to store it
@@ -150,8 +150,8 @@ function op_get(req, parts, res) {
 
     // if there is no queue for this at all, bail
     if ( typeof queue[queuename] === 'undefined' ) {
-        return_error(res, 1, 'No queue of that name found');
-        info('get', "error - unknown queue (queue=" + queuename + ")");
+        write_error(res, 1, 'No queue of that name found');
+        info('get', "error: unknown queue (queue=" + queuename + ")");
         return;
     }
 
@@ -172,7 +172,7 @@ function op_get(req, parts, res) {
     // either there were no messages or all the messages on the queue were
     // marked for deletion
     if ( id === null ) {
-        return_success(res, 0, 'No messages found', null);
+        write_success(res, 'No messages found');
         info("get", "no messages (queue=" + queuename + ")");
         return;
     }
@@ -209,7 +209,7 @@ function op_get(req, parts, res) {
         'attempted'  : msg.attempted,
         'deliveries' : msg.deliveries
     };
-    return_result( res, 200, 0, 'Message Returned', data );
+    write_success( res, 'Message Returned', data );
 }
 
 function op_ack(req, parts, res) {
@@ -217,16 +217,16 @@ function op_ack(req, parts, res) {
     var token = parts.query.token;
 
     if ( typeof token === 'undefined' ) {
-        return_result(res, 200, 6, 'Token not specified (undefined)');
-        info("ack", "error - token not specified");
+        write_success(res, 'Token not specified (undefined)');
+        info("ack", "error: token not specified");
         return;
     }
 
     // see if this token exists in the ack pile
     if ( typeof queue[queuename].ack[token] === 'undefined' ) {
         // not there, so let's get out of here
-        return_result(res, 200, 6, 'Unknown Token: ' + token);
-        info("ack", "error - unknown token (token=" + token + ")");
+        write_error(res, 6, 'Unknown Token: ' + token);
+        info("ack", "error: unknown token (token=" + token + ")");
         return;
     }
 
@@ -246,7 +246,7 @@ function op_ack(req, parts, res) {
 
     // write result to client
     info("ack", "id=" + msg.id + ", token=" + token);
-    return_result(res, 200, 0, 'Message Successfully Acked, Removed from Queue');
+    write_success(res, 'Message Successfully Acked, Removed from Queue');
 
     // finally, remove the file
     if ( cfg.store ) {
@@ -267,16 +267,16 @@ function op_del(req, parts, res) {
     var id = parts.query.id;
 
     if ( typeof id === 'undefined' ) {
-        info("del", "error - message id not specified");
-        return_result(res, 200, 7, 'Invalid ID (undefined)');
+        info("del", "error: message id not specified");
+        write_error(res, 7, 'Invalid ID (undefined)');
         return;
     }
 
     // see if this id exists at all
     if ( queue[queuename].msg[id] == null ) {
         // not there at all, so get out of here
-        info("del", "error - unknown message (id=" + id + ")");
-        return_result(res, 200, 7, 'Unknown ID');
+        info("del", "error: unknown message (id=" + id + ")");
+        write_error(res, 7, 'Unknown ID');
         return;
     }
 
@@ -288,7 +288,7 @@ function op_del(req, parts, res) {
     }
     delete queue[queuename].msg[id];
     info("del", "id=" + id);
-    return_result(res, 200, 0, 'Message Deleted');
+    write_success(res, 'Message Deleted');
 }
 
 function op_info(req, parts, res) {
@@ -296,8 +296,8 @@ function op_info(req, parts, res) {
 
     // if there is no queue for this at all, bail
     if ( typeof queue[queuename] === 'undefined' ) {
-        return_error(res, 1, 'No queue of that name found');
-        info('info', "error - unknown queue (queue=" + queuename + ")");
+        write_error(res, 1, 'No queue of that name found');
+        info('info', "error: unknown queue (queue=" + queuename + ")");
         return;
     }
 
@@ -309,12 +309,12 @@ function op_info(req, parts, res) {
         "seen"       : q.seen
     };
     info('info', "queue=" + queuename);
-    return_result(res, 200, 0, 'Info for queue ' + queuename, data);
+    write_success(res, 'Info for queue ' + queuename, data);
 }
 
 function op_ping(req, parts, res) {
     info('ping', "pong");
-    return_result(res, 200, 0, 'pong');
+    write_success(res, 'pong');
 }
 
 // ----------------------------------------------------------------------------
@@ -379,18 +379,18 @@ function ensure_queue(queuename, timeout) {
     }
 }
 
-function return_result(res, http_code, code, msg, data) {
+function write_result(res, http_code, code, msg, data) {
     res.writeHead(http_code, {'Content-Type': 'application/json'});
     var resp = { 'status' : { 'ok' : (code === 0), 'code' : code, 'msg' : msg }, 'data' : data };
     res.end(JSON.stringify( resp ) + '\n' );
 }
 
-function return_success(res, code, msg, data) {
-    return_result(res, 200, code, msg, data);
+function write_success(res, msg, data) {
+    write_result(res, 200, 0, msg, data);
 }
 
-function return_error(res, code, msg) {
-    return_result(res, 200, code, msg);
+function write_error(res, code, msg) {
+    write_result(res, 200, code, msg);
 }
 
 function make_token () {
