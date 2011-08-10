@@ -64,6 +64,10 @@ http.createServer(function (req, res) {
         op_info(req, parts, res);
         break;
 
+    case '/ping':
+        op_ping(req, parts, res);
+        break;
+
     default:
         return_result(res, 404, 404, 'Not Found');
         break;
@@ -307,6 +311,11 @@ function op_info(req, parts, res) {
     };
     info('info', "queue=" + queuename);
     return_result(res, 200, 0, 'Info for queue ' + queuename, data);
+}
+
+function op_ping(req, parts, res) {
+    info('ping', "pong");
+    return_result(res, 200, 0, 'pong');
 }
 
 // ----------------------------------------------------------------------------
