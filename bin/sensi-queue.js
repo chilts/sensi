@@ -147,14 +147,7 @@ function op_add(req, parts, res) {
 
 function op_get(req, parts, res) {
     var queuename = parts.query.queue || 'default';
-
-    // if there is no queue for this at all, bail
-    if ( typeof queue[queuename] === 'undefined' ) {
-        write_error(res, 1, 'No queue of that name found');
-        info('get', "error: unknown queue (queue=" + queuename + ")");
-        return;
-    }
-
+    ensure_queue(queuename);
     var q = queue[queuename];
 
     // keep looking through the message queue until you find one which hasn't
@@ -215,34 +208,36 @@ function op_get(req, parts, res) {
 function op_ack(req, parts, res) {
     var queuename = parts.query.queue || 'default';
     var token = parts.query.token;
+    ensure_queue(queuename);
+    var q = queue[queuename];
 
     if ( typeof token === 'undefined' ) {
         write_success(res, 'Token not specified (undefined)');
-        info("ack", "error: token not specified");
+        info("ack", "error: token not specified (queue=" + queuename + ")");
         return;
     }
 
     // see if this token exists in the ack pile
-    if ( typeof queue[queuename].ack[token] === 'undefined' ) {
+    if ( typeof q.ack[token] === 'undefined' ) {
         // not there, so let's get out of here
         write_error(res, 6, 'Unknown Token: ' + token);
-        info("ack", "error: unknown token (token=" + token + ")");
+        info("ack", "error: unknown token (queue=" + queuename + ", token=" + token + ")");
         return;
     }
 
     // get the id from the token, and then get the message
-    var id = queue[queuename].ack[token];
-    var msg = queue[queuename].msg[id];
+    var id = q.ack[token];
+    var msg = q.msg[id];
 
     // yes, it is in the ack pile, so delete it and remove it from the msg pile
     // 1) cancel the timeout
     clearTimeout( msg.timeout );
 
     // 2) remove from the ack pile
-    delete queue[queuename].ack[token];
+    delete q.ack[token];
 
     // 3) remove from the message pile
-    delete queue[queuename].msg[msg.id];
+    delete q.msg[msg.id];
 
     // write result to client
     info("ack", "id=" + msg.id + ", token=" + token);
@@ -272,8 +267,11 @@ function op_del(req, parts, res) {
         return;
     }
 
+    ensure_queue(queuename);
+    var q = queue[queuename];
+
     // see if this id exists at all
-    if ( queue[queuename].msg[id] == null ) {
+    if ( q.msg[id] == null ) {
         // not there at all, so get out of here
         info("del", "error: unknown message (id=" + id + ")");
         write_error(res, 7, 'Unknown ID');
@@ -282,26 +280,20 @@ function op_del(req, parts, res) {
 
     // delete from the msg stash and deal with this id when it appears on the
     // queue (or when an ack timer returns)
-    var msg = queue[queuename].msg[id];
+    var msg = q.msg[id];
     if ( msg.timeout ) {
         clearTimeout( msg.timeout );
     }
-    delete queue[queuename].msg[id];
+    delete q.msg[id];
     info("del", "id=" + id);
     write_success(res, 'Message Deleted');
 }
 
 function op_info(req, parts, res) {
     var queuename = parts.query.queue || 'default';
-
-    // if there is no queue for this at all, bail
-    if ( typeof queue[queuename] === 'undefined' ) {
-        write_error(res, 1, 'No queue of that name found');
-        info('info', "error: unknown queue (queue=" + queuename + ")");
-        return;
-    }
-
+    ensure_queue(queuename);
     var q = queue[queuename];
+
     var data = {
         "name "      : queuename,
         "length"     : Object.keys(q.msg).length,
