@@ -35,6 +35,36 @@ var cfg = read_config_file( process.argv[2] );
 // side effects to set things in 'queue'
 setup_queues( cfg );
 
+// if we have a cluster, set up pinging it's siblings
+if ( cfg.cluster ) {
+    cfg.nodes.forEach(function(v, i) {
+        console.log('I have a sibling at: ' + v);
+
+        var ping = function(v) {
+            var server = v.split(':');
+            var options = {
+                'host' : server[0],
+                'port' : server[1],
+                'path' : '/ping',
+                'method' : 'GET'
+            };
+            var req = http.request( options, function(res) {
+                debug( 'alive?', 'ok (' + v + ")" );
+            });
+            req.on('error', function(e) {
+                error( 'alive?', 'ping failed for ' + v + ': ' + e.message );
+            });
+            req.end();
+
+            // call us again in a few seconds
+            setTimeout(function() { ping(v); }, 10000);
+        };
+
+        // start off the pinging
+        ping(v);
+    });
+}
+
 // create the webserver
 http.createServer(function (req, res) {
     // get the different parts of the URL
@@ -338,6 +368,11 @@ function read_config_file(filename) {
         // check that this directory exists
         cfg.store = true;
         sys.puts("Reading outstanding files from '" + cfg.filestore + "/'");
+    }
+
+    // if we don't have a cluster, just make it blank
+    if ( Array.isArray(cfg.nodes) ) {
+        cfg.cluster = true;
     }
 
     return cfg;
