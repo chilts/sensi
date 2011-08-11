@@ -40,6 +40,17 @@ if ( cfg.cluster ) {
     cfg.nodes.forEach(function(v, i) {
         console.log('I have a sibling at: ' + v);
 
+        // setup our delay times for this node
+        var delay = [2, 3, 5, 7, 11, 13, 17];
+        delay.forEach(function(v, i) {
+            var other_i = Math.floor(Math.random() * delay.length);
+            // swap these around
+            var t = delay[other_i];
+            delay[other_i] = delay[i];
+            delay[i] = t;
+        });
+
+        var i = 0;
         var ping = function(v) {
             var server = v.split(':');
             var options = {
@@ -57,7 +68,9 @@ if ( cfg.cluster ) {
             req.end();
 
             // call us again in a few seconds
-            setTimeout(function() { ping(v); }, 10000);
+            setTimeout(function() { ping(v); }, delay[i] * 1000);
+            console.log(i, delay[i]);
+            i = ( i + 1 ) % delay.length;
         };
 
         // start off the pinging
